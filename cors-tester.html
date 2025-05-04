@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Proxy Tester</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .container {
+            margin-bottom: 30px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 80px;
+            font-family: monospace;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .response {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: 400px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #e7f9e7;
+            border: 1px solid #a3d9a3;
+            color: #2c7a2c;
+        }
+        .error {
+            background-color: #f9e7e7;
+            border: 1px solid #d9a3a3;
+            color: #7a2c2c;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .tab {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px 4px 0 0;
+            background: #f1f1f1;
+        }
+        .tab.active {
+            background: #fff;
+            border-bottom: 1px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS Proxy Tester</h1>
+    <p>Use this page to test your CORS proxy server deployed on Vercel.</p>
+    
+    <div class="container">
+        <h2>Configuration</h2>
+        <label for="proxyUrl">Proxy URL:</label>
+        <input type="text" id="proxyUrl" placeholder="https://your-proxy.vercel.app/api/proxy" value="https://cors-proxy-server-umber.vercel.app/api/proxy">
+        
+        <label for="apiKey">API Key:</label>
+        <input type="text" id="apiKey" placeholder="Your API Key" value="c1Qvom-gevfat-widru3">
+    </div>
+    
+    <div class="container">
+        <h2>Request</h2>
+        <label for="targetUrl">Target URL:</label>
+        <input type="text" id="targetUrl" placeholder="https://api.example.com/data" value="https://jsonplaceholder.typicode.com/posts/1">
+        
+        <label for="method">HTTP Method:</label>
+        <select id="method">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+        </select>
+        
+        <label for="headers">Headers (JSON format):</label>
+        <textarea id="headers" placeholder='{"Content-Type": "application/json"}'>{
+  "Content-Type": "application/json",
+  "Accept": "application/json"
+}</textarea>
+        
+        <label for="body">Request Body (for POST, PUT, PATCH):</label>
+        <textarea id="body" placeholder='{"key": "value"}'></textarea>
+        
+        <button id="sendBtn">Send Request</button>
+    </div>
+    
+    <div class="container">
+        <h2>Response</h2>
+        <div id="statusContainer"></div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="data">Data</div>
+            <div class="tab" data-tab="headers">Headers</div>
+            <div class="tab" data-tab="raw">Raw Response</div>
+        </div>
+        
+        <div id="dataContainer" class="response">
+            <pre id="responseData">No data yet. Send a request to see results.</pre>
+        </div>
+        
+        <div id="headersContainer" class="response" style="display:none;">
+            <pre id="responseHeaders">No headers yet. Send a request to see results.</pre>
+        </div>
+        
+        <div id="rawContainer" class="response" style="display:none;">
+            <pre id="rawResponse">No raw response yet. Send a request to see results.</pre>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Request Examples</h2>
+        <button onclick="loadExample('jsonplaceholder')">JSONPlaceholder (GET)</button>
+        <button onclick="loadExample('post')">Example POST</button>
+        <button onclick="loadExample('image')">Image Request</button>
+    </div>
+    
+    <script>
+        // Tab switching functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Hide all content containers
+                document.getElementById('dataContainer').style.display = 'none';
+                document.getElementById('headersContainer').style.display = 'none';
+                document.getElementById('rawContainer').style.display = 'none';
+                
+                // Show selected content container
+                const tabName = tab.getAttribute('data-tab');
+                if (tabName === 'data') {
+                    document.getElementById('dataContainer').style.display = 'block';
+                } else if (tabName === 'headers') {
+                    document.getElementById('headersContainer').style.display = 'block';
+                } else if (tabName === 'raw') {
+                    document.getElementById('rawContainer').style.display = 'block';
+                }
+            });
+        });
+        
+        // Examples
+        function loadExample(type) {
+            switch (type) {
+                case 'jsonplaceholder':
+                    document.getElementById('targetUrl').value = 'https://jsonplaceholder.typicode.com/posts/1';
+                    document.getElementById('method').value = 'GET';
+                    document.getElementById('headers').value = '{\n  "Content-Type": "application/json",\n  "Accept": "application/json"\n}';
+                    document.getElementById('body').value = '';
+                    break;
+                case 'post':
+                    document.getElementById('targetUrl').value = 'https://jsonplaceholder.typicode.com/posts';
+                    document.getElementById('method').value = 'POST';
+                    document.getElementById('headers').value = '{\n  "Content-Type": "application/json",\n  "Accept": "application/json"\n}';
+                    document.getElementById('body').value = '{\n  "title": "Test Post",\n  "body": "This is a test post through the CORS proxy",\n  "userId": 1\n}';
+                    break;
+                case 'image':
+                    document.getElementById('targetUrl').value = 'https://picsum.photos/200';
+                    document.getElementById('method').value = 'GET';
+                    document.getElementById('headers').value = '{\n  "Accept": "image/jpeg"\n}';
+                    document.getElementById('body').value = '';
+                    break;
+            }
+        }
+        
+        // Send request
+        document.getElementById('sendBtn').addEventListener('click', async function() {
+            const proxyUrl = document.getElementById('proxyUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const targetUrl = document.getElementById('targetUrl').value;
+            const method = document.getElementById('method').value;
+            
+            // Clear previous responses
+            document.getElementById('statusContainer').innerHTML = '';
+            document.getElementById('responseData').innerText = 'Loading...';
+            document.getElementById('responseHeaders').innerText = 'Loading...';
+            document.getElementById('rawResponse').innerText = 'Loading...';
+            
+            // Parse headers
+            let headers = {};
+            try {
+                const headerText = document.getElementById('headers').value.trim();
+                if (headerText) {
+                    headers = JSON.parse(headerText);
+                }
+            } catch (e) {
+                showError('Invalid JSON in headers: ' + e.message);
+                return;
+            }
+            
+            // Add API key
+            if (apiKey) {
+                headers['X-API-Key'] = apiKey;
+            }
+            
+            // Parse body for applicable methods
+            let body = null;
+            if (['POST', 'PUT', 'PATCH'].includes(method)) {
+                try {
+                    const bodyText = document.getElementById('body').value.trim();
+                    if (bodyText) {
+                        // Check if we need to parse the body as JSON
+                        if (headers['Content-Type'] === 'application/json') {
+                            body = JSON.stringify(JSON.parse(bodyText));
+                        } else {
+                            body = bodyText;
+                        }
+                    }
+                } catch (e) {
+                    showError('Invalid JSON in body: ' + e.message);
+                    return;
+                }
+            }
+            
+            // Construct URL
+            const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+            
+            try {
+                // Prepare fetch options
+                const fetchOptions = {
+                    method: method,
+                    headers: headers,
+                    mode: 'cors'
+                };
+                
+                if (body) {
+                    fetchOptions.body = body;
+                }
+                
+                console.log('Request:', {
+                    url: url,
+                    options: fetchOptions
+                });
+                
+                // Make the request
+                const start = Date.now();
+                const response = await fetch(url, fetchOptions);
+                const elapsed = Date.now() - start;
+                
+                // Display status
+                const statusClass = response.ok ? 'success' : 'error';
+                document.getElementById('statusContainer').innerHTML = `
+                    <div class="status ${statusClass}">
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Time:</strong> ${elapsed}ms</p>
+                    </div>
+                `;
+                
+                // Display headers
+                const headerObj = {};
+                response.headers.forEach((value, key) => {
+                    headerObj[key] = value;
+                });
+                document.getElementById('responseHeaders').innerText = JSON.stringify(headerObj, null, 2);
+                
+                // Clone the response for multiple reads
+                const clonedResponse = response.clone();
+                
+                // Get content type
+                const contentType = response.headers.get('content-type') || '';
+                
+                // Handle different content types
+                if (contentType.includes('application/json')) {
+                    try {
+                        const jsonData = await response.json();
+                        document.getElementById('responseData').innerText = JSON.stringify(jsonData, null, 2);
+                        document.getElementById('rawResponse').innerText = JSON.stringify(jsonData);
+                    } catch (e) {
+                        const text = await clonedResponse.text();
+                        document.getElementById('responseData').innerText = text;
+                        document.getElementById('rawResponse').innerText = text;
+                    }
+                } else if (contentType.includes('image/')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    document.getElementById('responseData').innerHTML = `<img src="${imageUrl}" alt="Image Response" style="max-width:100%">`;
+                    document.getElementById('rawResponse').innerText = '[Binary Image Data]';
+                } else if (contentType.includes('text/')) {
+                    const text = await response.text();
+                    document.getElementById('responseData').innerText = text;
+                    document.getElementById('rawResponse').innerText = text;
+                } else {
+                    // Binary data
+                    const text = await response.text();
+                    document.getElementById('responseData').innerText = '[Binary Data]';
+                    document.getElementById('rawResponse').innerText = text.length > 1000 ? 
+                        text.substring(0, 1000) + '... [truncated]' : text;
+                }
+                
+            } catch (error) {
+                showError('Error: ' + error.message);
+                console.error(error);
+            }
+        });
+        
+        function showError(message) {
+            document.getElementById('statusContainer').innerHTML = `
+                <div class="status error">
+                    <p><strong>Error:</strong> ${message}</p>
+                </div>
+            `;
+            document.getElementById('responseData').innerText = 'Request failed. See error above.';
+            document.getElementById('responseHeaders').innerText = 'No headers available due to error.';
+            document.getElementById('rawResponse').innerText = 'No raw response available due to error.';
+        }
+    </script>
+</body>
+</html>
