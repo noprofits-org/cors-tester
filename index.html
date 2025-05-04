@@ -273,7 +273,7 @@
             }
             
             // Construct URL
-            const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+            const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}&apiKey=${apiKey}`;
             
             try {
                 // Prepare fetch options
