@@ -1,3 +1,35 @@
+function updateRequestUrl() {
+    const proxyUrl = document.getElementById('proxyUrl').value;
+    const targetUrl = document.getElementById('targetUrl').value;
+    const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+    document.getElementById('requestUrlCode').textContent = url;
+}
+
+function copyToClipboard(elementId) {
+    const text = document.getElementById(elementId).textContent;
+    navigator.clipboard.writeText(text).then(
+        () => {
+            const btn = document.querySelector('.copy-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 1500);
+        },
+        (err) => {
+            console.error('Failed to copy: ', err);
+        }
+    );
+}
+
+function clearResponse() {
+    document.getElementById('statusContainer').innerHTML = '';
+    document.getElementById('responseData').innerText = 'No data yet. Send a request to see results.';
+    document.getElementById('responseHeaders').innerText = 'No headers yet. Send a request to see results.';
+    document.getElementById('rawResponse').innerText = 'No raw response yet. Send a request to see results.';
+    document.getElementById('requestDetails').innerText = 'No request details yet. Send a request to see results.';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     updateRequestUrl();
 
@@ -28,38 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update request URL preview when inputs change
     document.getElementById('proxyUrl').addEventListener('input', updateRequestUrl);
     document.getElementById('targetUrl').addEventListener('input', updateRequestUrl);
-
-    function updateRequestUrl() {
-        const proxyUrl = document.getElementById('proxyUrl').value;
-        const targetUrl = document.getElementById('targetUrl').value;
-        const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
-        document.getElementById('requestUrlCode').textContent = url;
-    }
-
-    function copyToClipboard(elementId) {
-        const text = document.getElementById(elementId).textContent;
-        navigator.clipboard.writeText(text).then(
-            () => {
-                const btn = document.querySelector('.copy-btn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                }, 1500);
-            },
-            (err) => {
-                console.error('Failed to copy: ', err);
-            }
-        );
-    }
-
-    function clearResponse() {
-        document.getElementById('statusContainer').innerHTML = '';
-        document.getElementById('responseData').innerText = 'No data yet. Send a request to see results.';
-        document.getElementById('responseHeaders').innerText = 'No headers yet. Send a request to see results.';
-        document.getElementById('rawResponse').innerText = 'No raw response yet. Send a request to see results.';
-        document.getElementById('requestDetails').innerText = 'No request details yet. Send a request to see results.';
-    }
 
     // Send request
     document.getElementById('sendBtn').addEventListener('click', async function () {
