@@ -15,8 +15,7 @@
             padding: 20px;
         }
 
-        h1,
-        h2 {
+        h1, h2 {
             color: #2c3e50;
         }
 
@@ -34,9 +33,7 @@
             font-weight: bold;
         }
 
-        input,
-        select,
-        textarea {
+        input, select, textarea {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -45,6 +42,23 @@
             box-sizing: border-box;
             font-family: inherit;
             font-size: 14px;
+        }
+
+        .radio-group {
+            margin-bottom: 15px;
+        }
+
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            font-weight: normal;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .radio-group input[type="radio"] {
+            width: auto;
+            margin-right: 5px;
         }
 
         textarea {
@@ -61,6 +75,8 @@
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s;
+            margin-right: 8px;
+            margin-bottom: 8px;
         }
 
         button:hover {
@@ -120,6 +136,32 @@
             background: #fff;
             border-bottom: 1px solid #fff;
         }
+
+        .copy-btn {
+            background-color: #4CAF50;
+            padding: 6px 12px;
+            font-size: 14px;
+            float: right;
+        }
+
+        .request-url {
+            font-family: monospace;
+            padding: 10px;
+            background: #f1f1f1;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .toggle-password {
+            cursor: pointer;
+            padding: 4px 8px;
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 
@@ -131,10 +173,24 @@
         <h2>Configuration</h2>
         <label for="proxyUrl">Proxy URL:</label>
         <input type="text" id="proxyUrl" placeholder="https://your-proxy.vercel.app/api/proxy"
-            value="https://cors-proxy-server-umber.vercel.app/api/proxy">
+            value="https://cors-proxy-xi-ten.vercel.app/api/proxy">
 
         <label for="apiKey">API Key:</label>
-        <input type="text" id="apiKey" placeholder="Your API Key" value="YOUR_API_KEY">
+        <div style="display: flex; align-items: center;">
+            <input type="password" id="apiKey" placeholder="Your API Key" value="">
+            <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
+        </div>
+
+        <div class="radio-group">
+            <label for="authHeader">
+                <input type="radio" id="authHeader" name="authMethod" value="header" checked>
+                Send API Key as Header
+            </label>
+            <label for="authQuery">
+                <input type="radio" id="authQuery" name="authMethod" value="query">
+                Send API Key as Query Parameter
+            </label>
+        </div>
     </div>
 
     <div class="container">
@@ -143,6 +199,12 @@
         <input type="text" id="targetUrl" placeholder="https://api.example.com/data"
             value="https://jsonplaceholder.typicode.com/posts/1">
 
+        <label for="requestUrl">Request URL Preview:</label>
+        <div id="requestUrl" class="request-url">
+            <code id="requestUrlCode">https://cors-proxy-xi-ten.vercel.app/api/proxy?url=https://jsonplaceholder.typicode.com/posts/1</code>
+            <button class="copy-btn" onclick="copyToClipboard('requestUrlCode')">Copy</button>
+        </div>
+
         <label for="method">HTTP Method:</label>
         <select id="method">
             <option value="GET">GET</option>
@@ -150,6 +212,8 @@
             <option value="PUT">PUT</option>
             <option value="PATCH">PATCH</option>
             <option value="DELETE">DELETE</option>
+            <option value="HEAD">HEAD</option>
+            <option value="OPTIONS">OPTIONS</option>
         </select>
 
         <label for="headers">Headers (JSON format):</label>
@@ -162,6 +226,7 @@
         <textarea id="body" placeholder='{"key": "value"}'></textarea>
 
         <button id="sendBtn">Send Request</button>
+        <button id="clearBtn" onclick="clearResponse()">Clear Response</button>
     </div>
 
     <div class="container">
@@ -172,6 +237,7 @@
             <div class="tab active" data-tab="data">Data</div>
             <div class="tab" data-tab="headers">Headers</div>
             <div class="tab" data-tab="raw">Raw Response</div>
+            <div class="tab" data-tab="request">Request Details</div>
         </div>
 
         <div id="dataContainer" class="response">
@@ -185,16 +251,26 @@
         <div id="rawContainer" class="response" style="display:none;">
             <pre id="rawResponse">No raw response yet. Send a request to see results.</pre>
         </div>
+
+        <div id="requestContainer" class="response" style="display:none;">
+            <pre id="requestDetails">No request details yet. Send a request to see results.</pre>
+        </div>
     </div>
 
     <div class="container">
         <h2>Request Examples</h2>
         <button onclick="loadExample('jsonplaceholder')">JSONPlaceholder (GET)</button>
         <button onclick="loadExample('post')">Example POST</button>
+        <button onclick="loadExample('put')">Example PUT</button>
         <button onclick="loadExample('image')">Image Request</button>
+        <button onclick="loadExample('weather')">Weather API</button>
     </div>
 
     <script>
+        // Initialize with safe default
+        document.getElementById('apiKey').value = '';
+        updateRequestUrl();
+
         // Tab switching functionality
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -208,6 +284,7 @@
                 document.getElementById('dataContainer').style.display = 'none';
                 document.getElementById('headersContainer').style.display = 'none';
                 document.getElementById('rawContainer').style.display = 'none';
+                document.getElementById('requestContainer').style.display = 'none';
 
                 // Show selected content container
                 const tabName = tab.getAttribute('data-tab');
@@ -217,9 +294,65 @@
                     document.getElementById('headersContainer').style.display = 'block';
                 } else if (tabName === 'raw') {
                     document.getElementById('rawContainer').style.display = 'block';
+                } else if (tabName === 'request') {
+                    document.getElementById('requestContainer').style.display = 'block';
                 }
             });
         });
+
+        // Update request URL preview when inputs change
+        document.getElementById('proxyUrl').addEventListener('input', updateRequestUrl);
+        document.getElementById('targetUrl').addEventListener('input', updateRequestUrl);
+        document.getElementById('apiKey').addEventListener('input', updateRequestUrl);
+        document.querySelectorAll('input[name="authMethod"]').forEach(radio => {
+            radio.addEventListener('change', updateRequestUrl);
+        });
+
+        function togglePassword() {
+            const input = document.getElementById('apiKey');
+            const toggleBtn = document.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleBtn.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                toggleBtn.textContent = 'Show';
+            }
+        }
+
+        function updateRequestUrl() {
+            const proxyUrl = document.getElementById('proxyUrl').value;
+            const targetUrl = document.getElementById('targetUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+
+            let url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+            
+            // Only show API key in URL if query param method is selected and there is a key
+            if (authMethod === 'query' && apiKey) {
+                url += `&apiKey=${encodeURIComponent(apiKey)}`;
+            }
+
+            document.getElementById('requestUrlCode').textContent = url;
+        }
+
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(
+                () => {
+                    // Success feedback
+                    const btn = document.querySelector('.copy-btn');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 1500);
+                },
+                (err) => {
+                    console.error('Failed to copy: ', err);
+                }
+            );
+        }
 
         // Examples
         function loadExample(type) {
@@ -236,13 +369,34 @@
                     document.getElementById('headers').value = '{\n  "Content-Type": "application/json",\n  "Accept": "application/json"\n}';
                     document.getElementById('body').value = '{\n  "title": "Test Post",\n  "body": "This is a test post through the CORS proxy",\n  "userId": 1\n}';
                     break;
+                case 'put':
+                    document.getElementById('targetUrl').value = 'https://jsonplaceholder.typicode.com/posts/1';
+                    document.getElementById('method').value = 'PUT';
+                    document.getElementById('headers').value = '{\n  "Content-Type": "application/json",\n  "Accept": "application/json"\n}';
+                    document.getElementById('body').value = '{\n  "id": 1,\n  "title": "Updated Post",\n  "body": "This post was updated through the CORS proxy",\n  "userId": 1\n}';
+                    break;
                 case 'image':
                     document.getElementById('targetUrl').value = 'https://picsum.photos/200';
                     document.getElementById('method').value = 'GET';
                     document.getElementById('headers').value = '{\n  "Accept": "image/jpeg"\n}';
                     document.getElementById('body').value = '';
                     break;
+                case 'weather':
+                    document.getElementById('targetUrl').value = 'https://api.openweathermap.org/data/2.5/weather?q=London&appid=DEMO_KEY';
+                    document.getElementById('method').value = 'GET';
+                    document.getElementById('headers').value = '{\n  "Accept": "application/json"\n}';
+                    document.getElementById('body').value = '';
+                    break;
             }
+            updateRequestUrl();
+        }
+
+        function clearResponse() {
+            document.getElementById('statusContainer').innerHTML = '';
+            document.getElementById('responseData').innerText = 'No data yet. Send a request to see results.';
+            document.getElementById('responseHeaders').innerText = 'No headers yet. Send a request to see results.';
+            document.getElementById('rawResponse').innerText = 'No raw response yet. Send a request to see results.';
+            document.getElementById('requestDetails').innerText = 'No request details yet. Send a request to see results.';
         }
 
         // Send request
@@ -251,12 +405,14 @@
             const apiKey = document.getElementById('apiKey').value;
             const targetUrl = document.getElementById('targetUrl').value;
             const method = document.getElementById('method').value;
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
 
             // Clear previous responses
             document.getElementById('statusContainer').innerHTML = '';
             document.getElementById('responseData').innerText = 'Loading...';
             document.getElementById('responseHeaders').innerText = 'Loading...';
             document.getElementById('rawResponse').innerText = 'Loading...';
+            document.getElementById('requestDetails').innerText = 'Loading...';
 
             // Parse headers
             let headers = {};
@@ -270,8 +426,8 @@
                 return;
             }
 
-            // Add API key to headers ONLY (not in URL)
-            if (apiKey) {
+            // Add API key to headers if header authentication is selected
+            if (authMethod === 'header' && apiKey) {
                 headers['X-API-Key'] = apiKey;
             }
 
@@ -294,8 +450,11 @@
                 }
             }
 
-            // Construct URL WITHOUT the API key
-            const url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+            // Construct URL with or without API key
+            let url = `${proxyUrl}?url=${encodeURIComponent(targetUrl)}`;
+            if (authMethod === 'query' && apiKey) {
+                url += `&apiKey=${encodeURIComponent(apiKey)}`;
+            }
 
             try {
                 // Prepare fetch options
@@ -309,10 +468,15 @@
                     fetchOptions.body = body;
                 }
 
-                console.log('Request:', {
+                // Record request details for display
+                const requestDetails = {
                     url: url,
-                    options: fetchOptions
-                });
+                    method: method,
+                    headers: headers,
+                    body: body
+                };
+                
+                document.getElementById('requestDetails').innerText = JSON.stringify(requestDetails, null, 2);
 
                 // Make the request
                 const start = Date.now();
